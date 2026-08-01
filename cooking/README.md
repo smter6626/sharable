@@ -12,6 +12,7 @@ cooking/
 ├── beef/
 ├── chicken/
 ├── duck/
+├── rice/
 ├── pork/
 ├── seafood/
 └── vegetables/
@@ -23,6 +24,7 @@ cooking/
 beef/牛肉_炸锅烧烤.md
 beef/煎肋眼牛排.md
 duck/盐水鸭.md
+rice/鸭汤豆腐菠菜粥.md
 ```
 
 文件名使用简短、可直接理解的中文名称；需要在同一文件中覆盖多个部位或变体时，可使用“食材_做法”的形式。不要为同一道菜创建 `v1`、`v2`、`final` 等重复文件；历史版本由 Git 保存。
