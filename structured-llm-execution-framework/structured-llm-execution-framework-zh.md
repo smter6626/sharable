@@ -167,17 +167,21 @@ LLM 的验证基于 Git 仓库的实际产出，而不是 Codex 的汇报。Code
 
 ## 六、Case Study
 
-### Case A：从多阶段实验执行到可交付补充材料
+### Case A：从研究原型到论文、扩展实验与可复现交付
 
-**任务类型**：多阶段工程交付任务。项目先经历内部实验执行、脚本简化、结果整理和包交付，最终目标不是继续扩展内部工具，而是交付一个外部读者可以检查和运行的独立材料包。
+**任务类型**：长周期科研工程任务，覆盖 probabilistic circuits、optimal transport 与 PeTeR 的多轮实验执行、资源调度、结果审计、论文支撑和可复现交付。它不是一个从头到尾只有一份计划的单任务，而是一个研究主线下连续发生、边界不同的多个任务。
 
-**步骤数**：跨多个阶段。早期阶段完成了端到端脚本整合、公开 runner 简化和 spreadsheet-controlled 执行；后期阶段将目标重新收敛为一个 standalone zip、一个清晰 runner、完整输入数据、README 和 CSV 输出。
+**时间跨度与阶段演化**：早期工作从 GCW / `fastcircuits` / old optimal-transport pipeline 开始，经过单文件端到端整合、DEBD HCLT runner 简化和 sample-DRO 执行，最终收敛为 `runDRO` reviewer-facing supplementary package。随后研究成果形成实际论文 **PeTeR: Post-Training Robustification of Probabilistic Circuits**，被 UAI 2026 Workshop on Tractable Probabilistic Modeling（TPM）接收并公开发布。TPM 阶段收口后，没有继续把旧 `runDRO` Runtime 无限扩写，而是为 AAAI full-length extension 新建独立任务：先执行 K=1/3/5 hyperparameter sweep，再执行 RLTPM K=3/K=5 GPU learning experiments。到 AAAI full-paper submission 后，production experiment execution 已再次收口，工作重心转向 appendix、supplementary、tables/charts 和外部可复现性整理。
 
-**关键节点**：Static 文档把已经完成或取消的分支明确关闭，并把当前合同锁定为 reviewer-facing supplementary package：单脚本、一键运行、学习所需模型、计算表格、输出 CSV，且不能引入新的科学逻辑。它同时写明 public runner 应保持 linear、explicit、easy to edit，禁止把 Slurm、manifest、ledger、phase engine、cluster path 或 internal audit machinery 泄漏到最终入口脚本。
+**关键的文档分工**：`runDRO_STATIC_SPEC.md` 在任务后期把已经完成或取消的内部执行分支明确关闭，并把合同收敛为 standalone supplementary zip、单一 reviewer-facing runner、20 个 DEBD 数据集、完整 `fastcircuits/` 模块和 CSV 表格输出；`runDRO_RUN_STATE.md` 则只保存当时的真实当前状态——clean zip 和 clean delivery repository 已产生、远端检查通过、下一步只剩 handoff。TPM 阶段完成后，History 把 `runDRO` 和 workshop paper 一起标记为已完成历史，从而阻止旧 Runtime 被误当作仍然 active 的研究主线。
 
-Runtime 文档只记录当前执行态：clean zip 和 clean delivery repository 已产生，远端仓库已检查，必要文件存在，20 个数据集 split 文件齐全，禁止项扫描通过，下一步只剩准备 handoff message。它没有重复全部历史，也没有重新解释任务合同，而是直接告诉下一次执行者“现在已过哪些 gate、产物在哪里、下一步是什么、什么变化会触发 replan”。
+进入 AAAI 阶段后，相同结构被复用但没有复用旧合同。`peter_sweep_STATIC_SPEC.md` 只锁定 Adrian 指定的三条 sweep 命令、运行环境、结果边界和“不得为跑通而修改科学方法”等限制；对应 Runtime 从 Python 版本和依赖 blocker 一路记录到 production job 完成、3360/3360 个配置达到 `metrics.json` 或 `error.json` 终态，并在 Adrian 明确确认高 learning-rate 数值失败属于预期结果后完成 commit/push。这里的关键不是“让所有配置成功”，而是防止 Agent 把实验失败误判成必须修复的代码错误。
 
-**结果**：该任务最终从一个容易继续膨胀的内部执行流程，收敛为一个边界清晰的外部交付包。Static 防止需求、科学配置和交付边界漂移；Runtime 防止当前状态混乱；Git 和 delivery repo 提供实际产物证据。这个案例说明，该框架不只适用于科研，也适用于任何需要把内部复杂流程压缩成可审查、可运行、可交付结果的多步骤工程任务。
+第二个 AAAI 任务进一步体现了 Runtime 的动态作用。`peter_rltpm_gpu_STATIC_SPEC.md` 固定 K=3/K=5、Python 3.11 和 Adrian 的 PyTorch/CUDA/Triton/PyJuice 运行栈，只把 `-j` 并发数留作允许通过证据调优的变量。Runtime 随执行持续吸收真实证据：Triton 因缺少 `Python.h` 失败后记录并验证 task-local header 修复；K=3 在 L40S 上验证 `j=8`、显存约 12 GiB；K=5 则通过实际 telemetry 证明 L40/L40S 不应默认承担 `j=8`，最终在完整 A100 80GB 上稳定运行，峰值显存约 47.8 GiB。最终 K=3 与 K=5 均达到 28/28 artifacts complete，并按批次审计、commit、push。Static 没有因为这些运行时发现而被污染成日志，Runtime 也没有把临时资源状态误写成永久科学约束。
+
+**框架在这个案例中解决的核心问题**：长期科研项目的“下一步”会不断变化，但每个具体任务的科学边界又必须保持稳定。若使用一份不断增长的总计划，早期 runDRO 的 dataset、runner、Slurm 和 artifact 假设很容易污染后来的 PeTeR/AAAI 任务；反过来，如果每次只看最新 Runtime，又会失去“TPM 已收口、AAAI 已另开任务”的长期状态。这里通过 task-local Static/Runtime 与跨任务 History 的分层，把“研究主线连续”与“执行合同不连续”同时表达出来。
+
+**结果**：该框架最终支撑的不再只是一个补充材料包，而是一条有实际论文产出的研究链：PeTeR workshop 论文完成、接收并公开；AAAI 延伸阶段的 3360 个 sweep 配置完成终态审计；RLTPM K=3/K=5 各 28/28 数据集实验完成并推送；production execution 收口后又能明确切换到 paper/supplementary reproducibility 工作，而不重新打开已经验收的旧任务。这个案例说明 Static / Runtime / History 的价值不只是“记录进度”，而是让一个跨数月、会反复改方向的科研项目仍然保持可验证的任务边界、可追溯的证据链和明确的停止条件。
 
 ---
 
@@ -237,4 +241,4 @@ Static / Runtime / audit machinery 服务于执行控制，不等于最终产品
 
 ---
 
-*最后更新：2026-06*
+*最后更新：2026-08*
