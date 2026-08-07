@@ -118,6 +118,7 @@
 ---
 
 ## 四、执行循环
+
 ```
 Step 0  文档一致性预检
         LLM 同时读取 Static、Runtime，长期任务还需读取 History
