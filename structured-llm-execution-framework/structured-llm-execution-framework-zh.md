@@ -40,6 +40,8 @@
 **原则三：提示词应当简单（Prompts Should Be Dumb）**
 框架的复杂度承载在文档结构上，而不是提示词上。理想状态下，触发 LLM 执行下一步的提示词应当简单到任何人都能写出来，例如："Codex 已完成，汇报如下……请去 repo 检查验证，判断是否推进。"这意味着框架的健壮性不依赖于提示技巧。
 
+Case B 还意外验证了这一点：用户只如实描述了源码遗失、目标使用者不熟悉电脑操作、需要跨平台复刻等现实约束，并未主动要求“建立软件工程流程”；Static / Runtime 结构由 LLM 根据这些约束生成，后续执行自然演化成了一条可审计的软件交付链。
+
 **原则四：工程强度应与任务风险匹配（Proportional Rigor）**
 本框架不是要求所有任务使用相同强度的工程控制。文档数量、验收门、独立验证、Git 追踪和 Runtime 更新频率，应当与任务的失败成本、可逆性、持续时间、复现需求和状态复杂度相匹配。对代码实现、科研实验、数据处理、长期仓库维护等任务，如果错误会污染后续步骤、产生高计算成本或需要跨会话复现，应严格使用 Static / Runtime、明确 acceptance gate，并以仓库实际产物作为验证依据。对 PPT、演讲稿、一次性文案、低风险内容整理等任务，可以保留目标和关键约束，但减少状态文档、Git gate 和阶段化验收，以避免框架本身的管理成本超过任务收益。
 
@@ -225,15 +227,17 @@ LLM 的验证基于 Git 仓库的实际产出，而不是 Codex 的汇报。Code
 
 ### Case B：从自有 Windows 原型到可审计发布的 macOS 应用
 
-**任务类型**：边界清晰的单项目软件工程与发布任务，案例为 [AudioShifter](https://github.com/smter6626/AudioShifter)。原始 Windows 版本和后续 macOS 重建均由同一项目作者完成；Windows 版最初是可运行但未按当前工程流程维护的 Python/Tkinter 原型，后续只作为只读历史参考纳入仓库。macOS 阶段的目标不是逐行迁移旧脚本，而是基于既有产品行为重新确认合同、重建模块化实现，并把它推进到可重复构建、可审计、可公开下载的独立应用。该任务始终围绕“完成 macOS 复刻并发布”这一单一交付目标连续推进，没有 Case A 那种跨任务研究方向切换，因此使用 Static + Runtime + artifact verification，没有额外 History，对应第七节的“严格”约束强度。
+**项目背景**：AudioShifter 最初是作者给母亲做的伴奏变调变速工具，早期 Windows 与 macOS 版本都能实际使用，但没有进入 Git，也没有采用系统化的软件工程流程。后来 macOS 源码遗失，只剩已经打包的 App；当需要进一步做移动端版本时，家中电脑性能有限，主要使用者又不熟悉电脑操作，原先依赖桌面端和手工维护的方式已经不再适合。于是项目重新建立公开仓库，先把可追溯的 Windows 历史实现作为只读参考，重新完成 macOS 工程化复刻，再以同一套产品合同为 Android 移植准备基础。
 
-**时间跨度与阶段演化**：2026-08-02 先完成 Windows 历史目录只读盘点与开发环境基线，验证 Apple Silicon `arm64`、Python/Tk、FFmpeg、FFprobe、Rubber Band 和三阶段音频处理 smoke test；2026-08-03 再确认行为合同，建立 `behavior_spec.md`、`architecture_plan.md` 和 `verification_matrix.md`，完成模块化源码 MVP、130 项自动化测试与真实音频/GUI 人工验收，Runtime 明确从源码 MVP `PASS` 推进到 PyInstaller 打包阶段。2026-08-04 建立可重复的独立 `.app` 构建与审计流程，`verify_app.sh` 对 Mach-O 架构、动态引用、RPATH、符号链接和 codesign 做静态审计，`verify_packaged_pipeline.sh` 在受限 PATH 下只使用 bundle 内部工具重新跑四格式音频管线；该阶段达到 137 项测试，并确认 75 个 Mach-O 全部为 thin arm64、324 条动态引用可解析、外部非系统 load command 为 0。进入 Release 阶段后，测试基线继续从 144 → 153 → 165 增长：alpha.1 的三个候选资产已经完整构建、上传、下载回验，但 Runtime 因仓库没有明确项目许可证而停在 `PARTIAL`，没有让 Agent 为了完成发布自行选择许可证；owner 明确 GPL-3.0-or-later 与品牌边界后才进入 alpha.2，最终 alpha.3 修复版本元数据、原生 License 菜单和普通用户校验流程，从 tag 的 detached worktree 重建并在非开发机完成 Gatekeeper 放行与实际使用验收，随后公开为 GitHub Pre-release。
+**任务类型**：这是一个边界清晰的单项目软件工程与发布任务，案例仓库为 [AudioShifter](https://github.com/smter6626/AudioShifter)。作者在启动任务时并没有要求 LLM“按某套软件工程规范重构”，只是如实说明了源码曾经遗失、目标使用者缺乏技术背景、需要跨平台复刻等现实约束；Static / Runtime 的职责分离、阶段验收和证据链由 LLM 在此基础上生成，并在后续执行中持续使用。整个 macOS 阶段始终围绕“从自有历史原型重建并发布独立 macOS 应用”这一单一目标推进，没有 Case A 那种跨任务研究方向切换，因此采用 Static + Runtime + artifact verification，而没有额外 History，对应第七节的“严格”约束强度。
+
+**时间跨度与阶段演化**：Runtime 记录的首次仓库盘点开始于 **2026-08-02 21:41:44 MST**；2026-08-03 完成行为合同、`behavior_spec.md`、`architecture_plan.md`、`verification_matrix.md`、模块化源码 MVP、真实音频/GUI 验收与 **130 项自动化测试**，随后推进到 PyInstaller 阶段。2026-08-04 完成独立 `.app` 构建、打包审计和受限环境下的四格式回验，并在同一天进入 Release：按 Git commit 时间，alpha.1 准备提交为 **03:15:41 MST**，alpha.2 为 **04:38:43 MST**，alpha.3 为 **05:33:35 MST**；同一 alpha.3 最终于 **06:39:17 MST** 公开为 GitHub Pre-release。也就是说，从本轮 macOS 工程化复刻的首次仓库盘点，到完成需求合同、实现、测试、打包、依赖审计、许可证决策、Release 构建、非开发机验收并公开发布，实际经过约 **32 小时 58 分钟，约 33 小时**。Release 过程中 alpha.1 的技术资产已经通过但因项目许可证未决停在 `PARTIAL`，owner 明确 GPL-3.0-or-later 与品牌边界后才继续推进，最终 alpha.3 收敛到 **165 passed, 0 failed, 0 skipped**。
 
 **关键的文档分工**：[**`macos_rebuild_static.md`**](https://github.com/smter6626/AudioShifter/blob/main/docs/macos_rebuild_static.md) 锁定长期产品和平台合同，例如 Apple Silicon `arm64` only、不支持 Intel / Rosetta / `universal2`、不把 Developer ID 签名或 Apple 公证作为首阶段目标、四种输入格式、`-24~+24` 半音、`-95%~+400%` 相对变速、固定 44.1 kHz / 320 kbps 双声道 MP3 输出、Downloads 目录、不覆盖已有文件、源文件保护与取消清理等。它刻意没有提前声称“最低支持 macOS 27”，而是规定最低兼容版本必须由最终依赖、打包产物和实机验证决定；也没有在 owner 决策前擅自选定项目许可证，只规定二进制分发前必须解决 GPL 兼容路线和对应源码义务。实际验证到“仅 macOS 27.0 build `26A5378n` 被测试”、alpha.1 因许可证缺失被阻塞、owner 随后选择 GPL-3.0-or-later 等事实，都由 [**`macos_rebuild_runtime.md`**](https://github.com/smter6626/AudioShifter/blob/main/docs/macos_rebuild_runtime.md) 和专门法律文档在状态推进时记录，而不是反向污染早期 Static。源码、打包和 Release 的验收证据则分别落在 [`mvp_test_report.md`](https://github.com/smter6626/AudioShifter/blob/main/macos/mvp_test_report.md)、[`packaging_test_report.md`](https://github.com/smter6626/AudioShifter/blob/main/macos/packaging_test_report.md) 与 [`release_verification_v0.1.0-alpha.3.md`](https://github.com/smter6626/AudioShifter/blob/main/macos/release/release_verification_v0.1.0-alpha.3.md) 中。
 
 **框架在这个案例中解决的核心问题**：与 Case A 的科学实验不同，这里的主要风险不是“实验失败会不会被误判成代码错误”，而是**开发机上能运行的代码、实际打包出的 `.app`、tag 对应源码和 GitHub 最终分发资产是否真的是同一个可复现产品**。开发环境中的 Homebrew、虚拟环境和本地动态库很容易让一个“本机可运行”的构建产生虚假安全感，因此每次阶段切换都要求由仓库产物和独立脚本给证据，而不是相信 Agent 的“已测试”汇报。`build_release_assets.sh` 从干净 tag 的 detached worktree 重新运行全部测试、重建 App、生成对应源码和 SHA-256；随后又从 GitHub Draft / Public Release 重新下载资产并针对下载副本重复审计，相当于把 Case A 的“LLM 独立验证优于 Agent 自评”映射成发布工程中的 artifact identity verification。alpha.1 在技术资产已经全部通过时仍因许可证决策缺失停在 `PARTIAL`，则对应执行循环中的 4.4：当 blocker 属于 owner policy 而不是技术实现时，Agent 必须停止并等待人类决策，而不是为了让流程变绿擅自补全合同。
 
-**结果**：`v0.1.0-alpha.3` 最终达到 `165 passed, 0 failed, 0 skipped`，发布包审计覆盖 75 个 thin-arm64 Mach-O、324 条动态引用和 20 个 `LC_RPATH`，没有指向 Homebrew、虚拟环境或仓库的外部非系统运行时依赖；Release 同时提供 App ZIP、SHA-256 校验文件和可审计的 GPL 对应源码包。非开发 Apple Silicon Mac 完成 ZIP 下载、哈希校验、Gatekeeper 单应用放行、启动和实际使用验收；公开后又重新下载三项资产并确认字节数和摘要不变。这个案例说明“严格”档位并不需要机械增加 History：对一个边界稳定、但构建与发布一致性风险较高的软件任务，Static + Runtime + artifact verification 已足以形成完整证据链；与 Case A 的“完整”档位并列后，也直接展示了“工程强度应与任务风险匹配”不是抽象口号，而是两种不同任务结构下的实际选择。
+**结果**：`v0.1.0-alpha.3` 最终达到 `165 passed, 0 failed, 0 skipped`，发布包审计覆盖 **75 个 thin-arm64 Mach-O、324 条动态引用和 20 个 `LC_RPATH`**，没有指向 Homebrew、虚拟环境或仓库的外部非系统运行时依赖；Release 同时提供 App ZIP、SHA-256 校验文件和可审计的 GPL 对应源码包。非开发 Apple Silicon Mac 完成 ZIP 下载、哈希校验、Gatekeeper 单应用放行、启动和实际使用验收；公开后又重新下载三项资产并确认字节数和摘要不变。这个案例说明“严格”档位并不需要机械增加 History：对一个边界稳定、但构建与发布一致性风险较高的软件任务，Static + Runtime + artifact verification 已足以形成完整证据链；与 Case A 的“完整”档位并列后，也直接展示了“工程强度应与任务风险匹配”不是抽象口号，而是两种不同任务结构下的实际选择。
 
 ---
 
