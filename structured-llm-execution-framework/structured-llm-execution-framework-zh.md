@@ -1,3 +1,17 @@
+> [!IMPORTANT]
+> **Historical version / 历史版本**
+>
+> This file preserves an earlier public development version of the framework for provenance purposes. It is no longer the canonical publication.
+>
+> 当前正式版本、后续更新、引用信息与 DOI 请访问：
+>
+> - Canonical repository: https://github.com/smter6626/structured-llm-execution-framework
+> - Formal v1.0 DOI: https://doi.org/10.5281/zenodo.21844275
+>
+> 本文件保留用于记录迁移前的公开开发历史，请勿将其作为当前正式版本引用。
+
+---
+
 # 结构化约束驱动的 LLM 执行框架
 
 > 通过文档分离与角色专职压缩 LLM 输出的不确定性
