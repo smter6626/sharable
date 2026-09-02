@@ -15,6 +15,7 @@ cooking/
 ├── rice/
 ├── pork/
 ├── seafood/
+├── soup/
 └── vegetables/
 ```
 
