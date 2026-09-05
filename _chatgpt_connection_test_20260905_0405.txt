@@ -1,0 +1,2 @@
+GitHub connector write/delete test by ChatGPT.
+Temporary file; safe to delete.
